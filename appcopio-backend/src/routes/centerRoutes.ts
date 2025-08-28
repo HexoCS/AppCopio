@@ -34,15 +34,9 @@ const isAdmin: RequestHandler = (req, res, next) => {
 // GET /api/centers - (Sin cambios en esta función)
 const getAllCentersHandler: RequestHandler = async (req, res) => {
     try {
-        const centersResult = await pool.query(`
-            SELECT c.center_id, c.name, c.address, c.type, c.capacity, c.is_active, 
-                   c.operational_status, c.public_note, c.latitude, c.longitude,
-                   u1.nombre AS municipal_manager_name,
-                   u2.nombre AS community_charge_name
-            FROM Centers c
-            LEFT JOIN Users u1 ON c.municipal_manager_id = u1.user_id
-            LEFT JOIN Users u2 ON c.comunity_charge_id = u2.user_id
-        `);
+        const centersResult = await pool.query(
+            'SELECT center_id, name, address, type, capacity, is_active, operational_status, public_note, latitude, longitude FROM Centers'
+        );
         const centers = centersResult.rows;
 
         const centersWithFullness = await Promise.all(centers.map(async (center) => {
@@ -113,15 +107,7 @@ const getAllCentersHandler: RequestHandler = async (req, res) => {
 const getCenterByIdHandler: RequestHandler = async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await pool.query(`
-            SELECT c.*, 
-                   u1.nombre AS municipal_manager_name,
-                   u2.nombre AS community_charge_name
-            FROM Centers c
-            LEFT JOIN Users u1 ON c.municipal_manager_id = u1.user_id
-            LEFT JOIN Users u2 ON c.comunity_charge_id = u2.user_id
-            WHERE c.center_id = $1
-        `, [id]);
+        const result = await pool.query('SELECT * FROM Centers WHERE center_id = $1', [id]);
         if (result.rows.length === 0) {
             res.status(404).json({ message: 'Centro no encontrado.' });
         } else {
@@ -223,16 +209,25 @@ const updateCenterHandler: RequestHandler = async (req, res) => {
 // DELETE /api/centers/:id - Eliminar un centro
 const deleteCenterHandler: RequestHandler = async (req, res) => {
     const { id } = req.params;
+    const client = await pool.connect();
     try {
-        const deleteOp = await pool.query('DELETE FROM Centers WHERE center_id = $1', [id]);
+        await client.query('BEGIN'); // Iniciar la transacción
+        // La eliminación en cascada se encargará de las tablas dependientes.
+        const deleteOp = await client.query('DELETE FROM Centers WHERE center_id = $1', [id]);
+
         if (deleteOp.rowCount === 0) {
+            await client.query('ROLLBACK');
             res.status(404).json({ message: 'Centro no encontrado para eliminar.' });
-        } else {
-            res.status(204).send();
+            return;
         }
+        await client.query('COMMIT'); // Confirmar la transacción
+        res.status(204).send();
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error(`Error al eliminar el centro ${id}:`, error);
         res.status(500).json({ message: 'Error interno del servidor.' });
+    } finally {
+        client.release();
     }
 };
 

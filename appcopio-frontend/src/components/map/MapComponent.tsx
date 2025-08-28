@@ -8,9 +8,9 @@ interface Center {
   center_id: string;
   name: string;
   address: string;
-  type: string; // Más flexible para aceptar diferentes valores del backend
+  type: 'Acopio' | 'Albergue';
   is_active: boolean;
-  operational_status?: string; // Más flexible para diferentes formatos
+  operational_status?: 'Abierto' | 'Cerrado Temporalmente' | 'Capacidad Máxima';
   public_note?: string;
   latitude: number | string; 
   longitude: number | string;
@@ -32,12 +32,9 @@ const getPinStatusClass = (center: Center): string => {
   }
   
   // Se da prioridad al estado operativo sobre el nivel de abastecimiento
-  // Normalizar a minúsculas para comparación
-  const operationalStatus = center.operational_status?.toLowerCase();
-  
-  if (operationalStatus === 'cerrado temporalmente') {
+  if (center.operational_status === 'Cerrado Temporalmente') {
     return 'status-temporarily-closed';
-  } else if (operationalStatus === 'capacidad maxima' || operationalStatus === 'capacidad máxima') {
+  } else if (center.operational_status === 'Capacidad Máxima') {
     return 'status-full-capacity';
   }
   
@@ -62,29 +59,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ centers }) => {
 
   const selectedCenter = centers.find(c => c.center_id === selectedCenterId);
 
-  if (!apiKey || apiKey === 'TU_PROPIA_CLAVE_DE_API_DE_Maps') {
-    return (
-      <div className="error-message">
-        <h3>Error: Falta la Clave API de Google Maps</h3>
-        <p>Para mostrar el mapa, necesitas:</p>
-        <ol>
-          <li>Obtener una clave API de Google Maps</li>
-          <li>Configurarla en el archivo .env.local</li>
-          <li>Reemplazar "TU_PROPIA_CLAVE_DE_API_DE_Maps" con tu clave real</li>
-        </ol>
-        <p>Mientras tanto, aquí tienes un resumen de los centros:</p>
-        <div className="centers-fallback">
-          {centers.map(center => (
-            <div key={center.center_id} className="center-card">
-              <h4>{center.name}</h4>
-              <p>Tipo: {center.type}</p>
-              <p>Estado: {center.is_active ? 'Activo' : 'Inactivo'}</p>
-              <p>Dirección: {center.address}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+  if (!apiKey) {
+    return <div className="error-message">Error: Falta la Clave API de Google Maps.</div>;
   }
 
   return (
@@ -106,7 +82,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ centers }) => {
               onClick={() => setSelectedCenterId(center.center_id)}
             >
               <div className={`marker-pin ${getPinStatusClass(center)}`}>
-                <span>{center.type?.toLowerCase().includes('albergue') ? '🏠' : '📦'}</span>
+                <span>{center.type === 'Albergue' ? '🏠' : '📦'}</span>
               </div>
             </AdvancedMarker>
           ))}
@@ -127,7 +103,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ centers }) => {
                   <p><strong>Estado Operativo:</strong> {selectedCenter.operational_status}</p>
                 )}
                 
-                {selectedCenter.operational_status?.toLowerCase() === 'cerrado temporalmente' && selectedCenter.public_note && (
+                {selectedCenter.operational_status === 'Cerrado Temporalmente' && selectedCenter.public_note && (
                   <div className="public-note">
                     <p><strong>Nota:</strong> {selectedCenter.public_note}</p>
                   </div>

@@ -19,7 +19,7 @@
 
 .filters-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 15px;
   align-items: end;
 }
@@ -43,7 +43,6 @@
   border-radius: 4px;
   font-size: 14px;
   background-color: white;
-  color: #333;
 }
 
 .filter-group select:focus,
@@ -51,11 +50,6 @@
   outline: none;
   border-color: #337ab7;
   box-shadow: 0 0 0 2px rgba(51, 122, 183, 0.2);
-}
-
-.filter-group select option {
-  color: #333;
-  background-color: white;
 }
 
 .filter-actions {
@@ -304,92 +298,65 @@ input:checked + .slider:before {
     margin-right: 0;
   }
 }
-
-/* Estilos para estados de centros */
-.center-status-info {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-  margin-bottom: 4px;
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Fondo semitransparente */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* Asegura que esté por encima de otros elementos */
 }
 
-.activity-status,
-.operational-status {
-  font-size: 0.85em;
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-weight: 500;
+/* Estilos para el contenedor del modal */
+.modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-width: 450px;
+    width: 90%;
+    text-align: center;
+    animation: fadeIn 0.3s ease-in-out;
 }
 
-.activity-status.active {
-  background-color: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
+/* Estilos para los botones dentro del modal */
+.modal-actions {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: space-around;
 }
 
-.activity-status.inactive {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+/* Estilos específicos para los botones de eliminar y cancelar */
+.modal-actions .confirm-btn {
+    background-color: #e53e3e; /* Rojo */
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
 }
 
-.operational-status.abierto {
-  background-color: #d1ecf1;
-  color: #0c5460;
-  border: 1px solid #bee5eb;
+.modal-actions .confirm-btn:hover {
+    background-color: #c53030;
 }
 
-.operational-status.cerrado-temporalmente {
-  background-color: #fff3cd;
-  color: #856404;
-  border: 1px solid #ffeaa7;
+.modal-actions .cancel-btn {
+    background-color: #cbd5e0; /* Gris */
+    color: #4a5568;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
 }
 
-.operational-status.capacidad-máxima {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
-}
-
-.public-note {
-  font-size: 0.9em;
-  color: #6c757d;
-  background-color: #f8f9fa;
-  padding: 8px;
-  border-radius: 4px;
-  margin-top: 8px;
-  border-left: 3px solid #ffc107;
-}
-
-.center-address {
-  color: #6c757d;
-  margin-bottom: 0;
-}
-
-.fullness-info {
-  font-size: 0.9em;
-  color: #495057;
-  margin-top: 4px;
-}
-
-/* Estilo para estado readonly */
-.status-readonly {
-  font-size: 0.85em;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-weight: 500;
-  display: inline-block;
-}
-
-.status-readonly.active {
-  background-color: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
-}
-
-.status-readonly.inactive {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+.modal-actions .cancel-btn:hover {
+    background-color: #a0aec0;
 }

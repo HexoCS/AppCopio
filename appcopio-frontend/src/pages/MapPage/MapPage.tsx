@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import MapComponent from '../../components/map/MapComponent';
-import SimpleMapComponent from '../../components/map/SimpleMapComponent';
 import { fetchWithAbort } from '../../services/api';
 
 // La interfaz se puede mover a un archivo de tipos compartido (ej: src/types.ts)
@@ -8,13 +7,11 @@ interface Center {
   center_id: string;
   name: string;
   address: string;
-  type: string; // Cambiar a string para aceptar valores del backend
+  type: 'Acopio' | 'Albergue';
   capacity: number;
   is_active: boolean;
-  operational_status?: string; // Agregar campo que viene del backend
-  public_note?: string; // Agregar campo que viene del backend
-  latitude: number | string; // Puede venir como string
-  longitude: number | string; // Puede venir como string
+  latitude: number;
+  longitude: number;
   fullnessPercentage: number;
 }
 
@@ -23,10 +20,6 @@ const MapPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const apiUrl = import.meta.env.VITE_API_URL;
-  
-  // Check if Google Maps API key is available
-  const hasGoogleMapsKey = Boolean(import.meta.env.VITE_Maps_API_KEY) && 
-                          import.meta.env.VITE_Maps_API_KEY !== 'TU_PROPIA_CLAVE_DE_API_DE_Maps';
 
   // Efecto para obtener los centros.
   // Se aplica el patrón AbortController para robustez y consistencia.
@@ -43,22 +36,7 @@ const MapPage: React.FC = () => {
             `${apiUrl}/centers`,
             controller.signal
         );
-        
-        // Log para debugging
-        console.log('Datos recibidos del backend:', data);
-        
-        // Transformar los datos para asegurar compatibilidad
-        const transformedData = data.map(center => ({
-          ...center,
-          type: center.type === 'albergue comunitario' ? 'Albergue' : 
-                center.type === 'acopio' ? 'Acopio' : center.type,
-          latitude: Number(center.latitude) || 0,
-          longitude: Number(center.longitude) || 0,
-          fullnessPercentage: center.fullnessPercentage || 0
-        }));
-        
-        console.log('Datos transformados:', transformedData);
-        setCenters(transformedData);
+        setCenters(data);
       } catch (err) {
         if (err instanceof Error && err.name !== 'AbortError') {
           console.error("Error fetching center data:", err);
@@ -91,13 +69,9 @@ const MapPage: React.FC = () => {
   return (
     <div className="map-page-container">
       {/* Este componente ahora actúa como un "contenedor" que se encarga de la lógica de datos
-        y le pasa la información al MapComponent o SimpleMapComponent según disponibilidad de API key.
+        y le pasa la información al MapComponent, que se enfoca en la presentación.
       */}
-      {hasGoogleMapsKey ? (
-        <MapComponent centers={centers} />
-      ) : (
-        <SimpleMapComponent centers={centers} />
-      )}
+      <MapComponent centers={centers} />
     </div>
   );
 };

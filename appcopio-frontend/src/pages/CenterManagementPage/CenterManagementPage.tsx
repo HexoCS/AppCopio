@@ -1,9 +1,9 @@
 // src/pages/CenterManagementPage/CenterManagementPage.tsx
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import { fetchWithAbort } from '../../services/api';
 import OfflineCentersView from '../../components/offline/OfflineCentersView';
+import { useAuth } from '../../contexts/AuthContext';
 import './CenterManagementPage.css';
 
 // La interfaz del Centro ha sido extendida para incluir nuevas propiedades.
@@ -19,20 +19,10 @@ export interface Center {
   latitude?: number;
   longitude?: number;
   fullnessPercentage?: number;
-  municipal_manager_name?: string;
-  community_charge_name?: string;
 }
 
 // Componente para el interruptor de estado.
-const StatusSwitch: React.FC<{ center: Center; onToggle: (id: string) => void; canEdit: boolean }> = ({ center, onToggle, canEdit }) => {
-  if (!canEdit) {
-    return (
-      <span className={`status-readonly ${center.is_active ? 'active' : 'inactive'}`}>
-        {center.is_active ? '🟢 Activo' : '🔴 Inactivo'}
-      </span>
-    );
-  }
-
+const StatusSwitch: React.FC<{ center: Center; onToggle: (id: string) => void }> = ({ center, onToggle }) => {
   return (
     <label className="switch">
       <input 
@@ -47,9 +37,9 @@ const StatusSwitch: React.FC<{ center: Center; onToggle: (id: string) => void; c
 
 
 const CenterManagementPage: React.FC = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+  const navigate = useNavigate();
+  const apiUrl = import.meta.env.VITE_API_URL;
 
   // Estados del componente
   const [centers, setCenters] = useState<Center[]>([]); // Lista maestra de centros
@@ -62,7 +52,10 @@ const CenterManagementPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [typeFilter, setTypeFilter] = useState<string>('todos');
   const [locationFilter, setLocationFilter] = useState<string>('');
-  const [communeFilter, setCommuneFilter] = useState<string>('todos');
+
+  //Estados para la lógica de eliminación
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [centerToDelete, setCenterToDelete] = useState<string | null>(null);
 
   // Efecto para detectar el estado de la conexión (online/offline).
   useEffect(() => {
@@ -78,47 +71,40 @@ const CenterManagementPage: React.FC = () => {
     };
   }, []);
 
-  // Efecto para la carga inicial de datos. Ya incluye el AbortController.
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const loadCenters = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const data = await fetchWithAbort<Center[]>(`${apiUrl}/centers`, controller.signal);
-        setCenters(data);
-        // Guardar en localStorage para uso offline.
-        localStorage.setItem('centers_list', JSON.stringify({ data, lastUpdated: new Date().toISOString() }));
-      } catch (err) {
-        if (err instanceof Error && err.name !== 'AbortError') {
-          setError(err.message);
-          console.error("Error al obtener los centros:", err);
-          // Si falla la red, intenta cargar desde el caché local.
-          try {
-            const offlineData = localStorage.getItem('centers_list');
-            if (offlineData) {
-              const parsedData = JSON.parse(offlineData);
-              setCenters(parsedData.data || []);
-              setError(null); // Borra el error de red si se cargan datos de caché
+      const fetchCenters = async () => {
+        const controller = new AbortController();
+        setIsLoading(true);
+        setError(null);
+        try {
+            const data = await fetchWithAbort<Center[]>(`${apiUrl}/centers`, controller.signal);
+            setCenters(data);
+            localStorage.setItem('centers_list', JSON.stringify({ data, lastUpdated: new Date().toISOString() }));
+        } catch (err) {
+            if (err instanceof Error && err.name !== 'AbortError') {
+                setError(err.message);
+                console.error("Error al obtener los centros:", err);
+                try {
+                    const offlineData = localStorage.getItem('centers_list');
+                    if (offlineData) {
+                        const parsedData = JSON.parse(offlineData);
+                        setCenters(parsedData.data || []);
+                        setError(null); 
+                    }
+                } catch (offlineError) {
+                    console.error('Error al cargar datos offline:', offlineError);
+                }
             }
-          } catch (offlineError) {
-            console.error('Error al cargar datos offline:', offlineError);
-          }
+        } finally {
+            if (!controller.signal.aborted) {
+                setIsLoading(false);
+            }
         }
-      } finally {
-        if (!controller.signal.aborted) {
-            setIsLoading(false);
-        }
-      }
     };
 
-    loadCenters();
-
-    return () => {
-      controller.abort();
-    };
-  }, [apiUrl]);
+    // Efecto para la carga inicial de datos.
+    useEffect(() => {
+        fetchCenters();
+    }, [apiUrl]);
 
   // Efecto que aplica los filtros cada vez que cambian los datos maestros o los filtros.
   useEffect(() => {
@@ -136,35 +122,9 @@ const CenterManagementPage: React.FC = () => {
         center.name.toLowerCase().includes(locationFilter.toLowerCase())
       );
     }
-    if (communeFilter !== 'todos') {
-      filtered = filtered.filter(center => {
-        const address = center.address.toLowerCase();
-        const name = center.name.toLowerCase();
-        switch (communeFilter) {
-          case 'valparaiso':
-            return address.includes('valparaíso') || address.includes('valparaiso') || name.includes('valparaíso') || name.includes('valparaiso');
-          case 'vina':
-            return address.includes('viña del mar') || address.includes('vina del mar');
-          case 'concon':
-            return address.includes('concón') || address.includes('concon');
-          case 'cerro_playa':
-            return address.includes('playa ancha') || address.includes('playa');
-          case 'cerro_cordillera':
-            return address.includes('cordillera');
-          case 'cerro_alegre':
-            return address.includes('alegre') || name.includes('alegre');
-          case 'cerro_concepcion':
-            return address.includes('concepción') || address.includes('concepcion');
-          case 'cerro_baron':
-            return address.includes('barón') || address.includes('baron');
-          default:
-            return true;
-        }
-      });
-    }
 
     setFilteredCenters(filtered);
-  }, [centers, statusFilter, typeFilter, locationFilter, communeFilter]);
+  }, [centers, statusFilter, typeFilter, locationFilter]);
 
   // Función para cambiar el estado de un centro, con manejo offline.
   const handleToggleActive = async (id: string) => {
@@ -207,6 +167,56 @@ const CenterManagementPage: React.FC = () => {
         alert('No se pudo actualizar el centro. Por favor, inténtelo de nuevo.');
       }
     }
+  };  
+  //LÓGICA DE ELIMINACIÓN 
+  const handleDeleteClick = (centerId: string) => {
+        setCenterToDelete(centerId);
+        setIsModalOpen(true);
+    };
+
+  const handleConfirmDelete = async () => {
+      if (!centerToDelete) return;
+      
+      try {
+          const response = await fetch(`${apiUrl}/centers/${centerToDelete}`, {
+              method: 'DELETE',
+              // Se asume que el token de autenticación se manejará aquí
+          });
+
+          if (response.status === 204) {
+              console.log(`Centro ${centerToDelete} eliminado exitosamente.`);
+              fetchCenters(); // Recarga la lista de centros
+          } else if (response.status === 404) {
+              console.error('Centro no encontrado.');
+          } else {
+              console.error('Error al eliminar el centro.');
+          }
+      } catch (error) {
+          console.error('Error de red al eliminar el centro:', error);
+          // Lógica para manejar la eliminación offline
+          if (!navigator.onLine) {
+              const pendingActions = JSON.parse(localStorage.getItem('pending_actions') || '[]');
+              pendingActions.push({
+                  type: 'delete_center',
+                  url: `${apiUrl}/centers/${centerToDelete}`,
+                  method: 'DELETE',
+                  body: {},
+                  timestamp: new Date().toISOString()
+              });
+              localStorage.setItem('pending_actions', JSON.stringify(pendingActions));
+              alert('Sin conexión. La eliminación se procesará cuando la recuperes.');
+          } else {
+              alert('No se pudo eliminar el centro. Por favor, inténtelo de nuevo.');
+          }
+      } finally {
+          setIsModalOpen(false);
+          setCenterToDelete(null);
+      }
+  };
+
+  const handleCancelDelete = () => {
+      setIsModalOpen(false);
+      setCenterToDelete(null);
   };
 
   const handleShowInfo = (id: string) => {
@@ -217,11 +227,7 @@ const CenterManagementPage: React.FC = () => {
     setStatusFilter('todos');
     setTypeFilter('todos');
     setLocationFilter('');
-    setCommuneFilter('todos');
   };
-
-  // Verificar permisos de usuario
-  const canEditCenterStatus = user?.role_name === 'Trabajador Municipal' || user?.role_name === 'Administrador' || user?.es_apoyo_admin;
 
   // --- Renderizado del Componente ---
 
@@ -242,6 +248,11 @@ const CenterManagementPage: React.FC = () => {
     <div className="center-management-container">
         <h1>Gestión de Centros y Albergues</h1>
         <p>Aquí puedes ver y administrar el estado de los centros del catastro municipal.</p>
+        {user?.es_apoyo_admin === true && (
+                <Link to="/admin/centers/new" className="add-center-btn">
+                    + Registrar Nuevo Centro
+                </Link>
+            )}
 
         <div className="filters-section">
             <h3>Filtros</h3>
@@ -263,25 +274,7 @@ const CenterManagementPage: React.FC = () => {
                     </select>
                 </div>
                 <div className="filter-group">
-                    <label htmlFor="commune-filter">Comuna/Cerro:</label>
-                    <select id="commune-filter" value={communeFilter} onChange={(e) => setCommuneFilter(e.target.value)}>
-                        <option value="todos">Todas las ubicaciones</option>
-                        <optgroup label="Comunas">
-                            <option value="valparaiso">Valparaíso</option>
-                            <option value="vina">Viña del Mar</option>
-                            <option value="concon">Concón</option>
-                        </optgroup>
-                        <optgroup label="Cerros de Valparaíso">
-                            <option value="cerro_playa">Playa Ancha</option>
-                            <option value="cerro_cordillera">Cordillera</option>
-                            <option value="cerro_alegre">Alegre</option>
-                            <option value="cerro_concepcion">Concepción</option>
-                            <option value="cerro_baron">Barón</option>
-                        </optgroup>
-                    </select>
-                </div>
-                <div className="filter-group">
-                    <label htmlFor="location-filter">Buscar:</label>
+                    <label htmlFor="location-filter">Ubicación:</label>
                     <input id="location-filter" type="text" placeholder="Buscar por dirección o nombre..." value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} />
                 </div>
                 <div className="filter-actions">
@@ -302,40 +295,37 @@ const CenterManagementPage: React.FC = () => {
                     <li key={center.center_id} className={`center-item ${center.is_active ? 'item-active' : 'item-inactive'}`}>
                         <div className="center-info">
                             <h3>{center.name}</h3>
-                            <p className="center-address">{center.address} ({center.type})</p>
-                            <div className="center-status-info">
-                                <span className={`activity-status ${center.is_active ? 'active' : 'inactive'}`}>
-                                    {center.is_active ? '🟢 Activo' : '🔴 Inactivo'}
-                                </span>
-                                {center.operational_status && center.is_active && (
-                                    <span className={`operational-status ${center.operational_status.toLowerCase().replace(' ', '-')}`}>
-                                        {center.operational_status === 'Abierto' && '✅'}
-                                        {center.operational_status === 'Cerrado Temporalmente' && '⏸️'}
-                                        {center.operational_status === 'Capacidad Máxima' && '🚫'}
-                                        {' '}{center.operational_status}
-                                    </span>
-                                )}
-                            </div>
-                            {center.operational_status === 'Cerrado Temporalmente' && center.public_note && (
-                                <p className="public-note">
-                                    <strong>Nota:</strong> {center.public_note}
-                                </p>
-                            )}
+                            <p>{center.address} ({center.type})</p>
                             {center.fullnessPercentage !== undefined && (
-                                <p className="fullness-info">
-                                    📦 Abastecimiento: {center.fullnessPercentage.toFixed(1)}%
-                                </p>
+                                <p className="fullness-info">Abastecimiento: {center.fullnessPercentage.toFixed(1)}%</p>
                             )}
                         </div>
                         <div className="center-actions">
                             <Link to={`/center/${center.center_id}/inventory`} className="inventory-btn">Gestionar</Link>
                             <button className="info-button" onClick={() => handleShowInfo(center.center_id)}>Ver Detalles</button>
-                            <StatusSwitch center={center} onToggle={handleToggleActive} canEdit={canEditCenterStatus || false} />
+                            <StatusSwitch center={center} onToggle={handleToggleActive} />
+                            {user?.es_apoyo_admin === true && (
+                                <button onClick={() => handleDeleteClick(center.center_id)} className="delete-btn">
+                                    Eliminar
+                                </button>
+                            )}
                         </div>
                     </li>
                 ))
             )}
         </ul>
+        {isModalOpen && (
+          <div className="modal-backdrop">
+              <div className="modal-content">
+                  <h2>Confirmar Eliminación</h2>
+                  <p>¿Estás seguro de que deseas eliminar el centro con ID: **{centerToDelete}**? Esta acción es irreversible y eliminará todos los datos relacionados.</p>
+                  <div className="modal-actions">
+                      <button onClick={handleConfirmDelete} className="confirm-btn">Sí, eliminar</button>
+                      <button onClick={handleCancelDelete} className="cancel-btn">Cancelar</button>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };

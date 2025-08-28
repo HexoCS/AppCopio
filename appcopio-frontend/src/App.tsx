@@ -27,6 +27,7 @@ import CenterResidentsPage from "./pages/CenterResidentsPage/CenterResidentsPage
 
 
 import "./App.css";
+import MultiStepCenterForm from "./pages/CreateCenterPage/MultiStepCenterForm";
 
 function App() {
   return (
@@ -49,17 +50,14 @@ function App() {
             {/* Todas las rutas aquí dentro usarán el AdminLayout y tendrán Navbar */}
             <Route element={<AdminLayout />}>
               
-              {/* Rutas específicas para Administradores y Trabajadores Municipales */}
-              <Route element={<ProtectedRoute 
-                  allowedRoles={["Administrador", "Trabajador Municipal"]} 
-                  checkSupportAdmin={true} 
-                />}>
-                <Route path="/admin/centers" element={<CenterManagementPage />} />
-                <Route path="/admin/centers/new" element={<CreateCenterPage />} />
-                <Route path="/admin/users" element={<UsersManagementPage />} />
-                <Route path="/admin/fibe" element={<FibePage />} />
-                <Route path="/admin/updates" element={<UpdatesPage />} />
-              </Route>
+              {/* Rutas de Admin y Apoyo */}
+              <Route path="/admin/centers" element={<CenterManagementPage />} />
+              <Route path="/admin/centers/new" element={<MultiStepCenterForm />} />
+              <Route path="/admin/users" element={<UsersManagementPage />} />
+
+              {/*<Route path="/admin/incidents" element={<IncidentListPage />} />*/}
+              <Route path="/admin/fibe" element={<FibePage />} />
+              <Route path="/admin/updates" element={<UpdatesPage />} />
 
               {/* Ruta de Trabajador Municipal */}
               <Route path="/mis-centros" element={<MisCentrosPage />} />
