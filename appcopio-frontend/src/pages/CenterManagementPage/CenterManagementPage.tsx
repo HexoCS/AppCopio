@@ -128,9 +128,14 @@ const CenterManagementPage: React.FC = () => {
 
   // Función para cambiar el estado de un centro, con manejo offline.
   const handleToggleActive = async (id: string) => {
+    console.log(`[FRONTEND] Intentando cambiar estado del centro: ${id}`);
     const centerToToggle = centers.find(center => center.center_id === id);
-    if (!centerToToggle) return;
+    if (!centerToToggle) {
+      console.log(`[FRONTEND] Error: Centro ${id} no encontrado en la lista local`);
+      return;
+    }
     const newStatus = !centerToToggle.is_active;
+    console.log(`[FRONTEND] Estado actual: ${centerToToggle.is_active}, nuevo estado: ${newStatus}`);
 
     // Actualización optimista de la UI
     const updatedCenters = centers.map(center =>
@@ -139,18 +144,33 @@ const CenterManagementPage: React.FC = () => {
     setCenters(updatedCenters);
 
     try {
+      console.log(`[FRONTEND] Enviando petición a: ${apiUrl}/centers/${id}/status`);
+      console.log(`[FRONTEND] Cuerpo de la petición:`, { isActive: newStatus });
+      
       const response = await fetch(`${apiUrl}/centers/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: newStatus }),
       });
-      if (!response.ok) throw new Error('Falló la actualización en el servidor.');
+      
+      console.log(`[FRONTEND] Respuesta recibida - Status: ${response.status}, OK: ${response.ok}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log(`[FRONTEND] Error del servidor:`, errorText);
+        throw new Error(`Falló la actualización en el servidor. Status: ${response.status}`);
+      }
+      
+      const responseData = await response.json();
+      console.log(`[FRONTEND] Respuesta exitosa:`, responseData);
+      
       // Si la petición es exitosa, se actualiza el caché.
       localStorage.setItem('centers_list', JSON.stringify({ data: updatedCenters, lastUpdated: new Date().toISOString() }));
     } catch (err) {
-      console.error('Error al actualizar el estado del centro:', err);
+      console.error('[FRONTEND] Error al actualizar el estado del centro:', err);
       // Si el error es por estar offline, se encola la acción.
       if (!navigator.onLine) {
+        console.log('[FRONTEND] Dispositivo offline, encolando acción...');
         const pendingActions = JSON.parse(localStorage.getItem('pending_actions') || '[]');
         pendingActions.push({
           type: 'update_center_status',
@@ -163,6 +183,7 @@ const CenterManagementPage: React.FC = () => {
         alert('Sin conexión. El cambio se aplicará cuando la recuperes.');
       } else {
         // Si hay otro error, se revierte el cambio y se notifica.
+        console.log('[FRONTEND] Revirtiendo cambio optimista...');
         setCenters(centers); // Revertir la actualización optimista
         alert('No se pudo actualizar el centro. Por favor, inténtelo de nuevo.');
       }

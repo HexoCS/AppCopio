@@ -32,6 +32,15 @@ const port = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json()); 
 
+// Middleware de logging para debug
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log('Body:', req.body);
+  }
+  next();
+}); 
+
 // Ruta de prueba simple
 app.get('/api', (req: Request, res: Response) => {
   res.json({ message: '¡El Backend de AppCopio está funcionando! 災害' });

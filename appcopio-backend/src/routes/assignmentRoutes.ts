@@ -1,5 +1,5 @@
 // src/routes/assignmentRoutes.ts
-import { Router, RequestHandler } from "express";
+import { Router, Request, Response } from "express";
 import pool from "../config/db";
 import { AssignmentRole } from "../types/user";
 
@@ -35,7 +35,7 @@ function normalizeRole(input: string | null | undefined): AssignmentRole {
  * @desc    Asigna un centro a un usuario (crea nuevo tramo y cierra el anterior de ese centro+rol).
  * @body    { user_id: number, center_id: string, role: string, changed_by?: number }
  */
-const addAssignmentHandler: RequestHandler = async (req, res) => {
+const addAssignmentHandler = async (req: Request, res: Response): Promise<void> => {
   const { user_id, center_id, role, changed_by } = req.body || {};
   if (!user_id || !center_id || !role) {
     res.status(400).json({ error: "Se requieren user_id, center_id y role." });
@@ -127,7 +127,7 @@ const addAssignmentHandler: RequestHandler = async (req, res) => {
  *  - Sin role: se cierran todas las activas de ese user+center (si en el futuro agregas más tipos).
  *  - Con role: se cierra solo la de ese role.
  */
-const removeAssignmentHandler: RequestHandler = async (req, res) => {
+const removeAssignmentHandler = async (req: Request, res: Response): Promise<void> => {
   const { user_id, center_id, role, changed_by } = req.body || {};
   if (!user_id || !center_id) {
     res.status(400).json({ error: "Se requieren user_id y center_id." });

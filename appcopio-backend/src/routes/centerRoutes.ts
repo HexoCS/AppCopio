@@ -234,22 +234,32 @@ const deleteCenterHandler: RequestHandler = async (req, res) => {
 const updateStatusHandler: RequestHandler = async (req, res) => {
     const { id } = req.params;
     const { isActive } = req.body; 
+    
+    console.log(`[UPDATE STATUS] ID: ${id}, isActive: ${isActive}, type: ${typeof isActive}`);
+    console.log(`[UPDATE STATUS] Full body:`, req.body);
+    
     if (typeof isActive !== 'boolean') {
+        console.log(`[UPDATE STATUS] Error: isActive is not boolean, received: ${typeof isActive}`);
         res.status(400).json({ message: 'El campo "isActive" es requerido y debe ser un booleano.' });
         return;
     }
     try {
+        console.log(`[UPDATE STATUS] Executing query for center ${id} with isActive: ${isActive}`);
         const updatedCenter = await pool.query(
             'UPDATE Centers SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE center_id = $2 RETURNING *',
             [isActive, id]
         );
+        console.log(`[UPDATE STATUS] Query result: ${updatedCenter.rows.length} rows affected`);
         if (updatedCenter.rows.length === 0) {
+            console.log(`[UPDATE STATUS] Error: Centro ${id} no encontrado`);
             res.status(404).json({ message: 'Centro no encontrado.' });
         } else {
+            console.log(`[UPDATE STATUS] Success: Centro ${id} actualizado correctamente`);
+            console.log(`[UPDATE STATUS] Sending response:`, updatedCenter.rows[0]);
             res.status(200).json(updatedCenter.rows[0]);
         }
     } catch (error) {
-        console.error(`Error al actualizar estado del centro ${id}:`, error);
+        console.error(`[UPDATE STATUS] Error al actualizar estado del centro ${id}:`, error);
         res.status(500).json({ message: 'Error interno del servidor.' });
     }
 };
